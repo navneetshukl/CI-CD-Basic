@@ -23,11 +23,6 @@ var (
 	nextID = 1
 )
 
-// UnusedFunction is not used anywhere - this will trigger staticcheck warning
-func UnusedFunction() {
-	fmt.Println("This function is never called")
-}
-
 func main() {
 	// Initialize Gin router
 	r := gin.Default()
@@ -125,7 +120,7 @@ func getUserByID(c *gin.Context) {
 	}
 
 	// Format string mismatch bug - go vet will catch this
-	fmt.Printf("User: %d\n", user)  // Wrong format verb: should be %v or %+v
+	fmt.Printf("User: %v\n", user) // Fixed: changed %d to %v
 
 	c.JSON(http.StatusOK, user)
 }

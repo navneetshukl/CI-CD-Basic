@@ -162,8 +162,8 @@ func TestGetUserName(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &response)
 
 	createdUser := response["user"].(map[string]interface{})
-	// INTENTIONALLY WRONG: Expecting "Bob" but getting "Alice"
-	if createdUser["name"] != "Bob" {
-		t.Errorf("Expected name 'Bob', got '%s'", createdUser["name"])
+	// FIXED: Now correctly expects "Alice"
+	if createdUser["name"] != "Alice" {
+		t.Errorf("Expected name 'Alice', got '%s'", createdUser["name"])
 	}
 }
