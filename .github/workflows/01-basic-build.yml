@@ -1,0 +1,65 @@
+# ============================================
+# WORKFLOW FILE: 01-basic-build.yml
+# PURPOSE: Basic CI pipeline that builds and runs a Go application
+# ============================================
+
+# Name of the workflow (shown in GitHub Actions UI)
+name: Basic Go Build
+
+# ============================================
+# TRIGGER SECTION
+# ============================================
+# This workflow runs automatically when:
+# - Code is pushed to the 'main' branch
+on:
+  push:
+    branches: [ main ]
+
+# ============================================
+# JOBS SECTION
+# ============================================
+# A workflow can have multiple jobs that run in parallel
+# Here we define ONE job called 'build'
+jobs:
+
+  # Define the 'build' job
+  build:
+
+    # Specify which OS to run this job on
+    # Options: ubuntu-latest, windows-latest, macos-latest
+    runs-on: ubuntu-latest
+
+    # ========================================
+    # STEPS SECTION (run sequentially)
+    # ========================================
+    steps:
+
+      # STEP 1: Download your repository code onto the runner
+      - name: Get source code
+        # 'uses' calls a pre-built action from GitHub Marketplace
+        # actions/checkout@v4 = official action to clone your repo
+        uses: actions/checkout@v4
+
+      # STEP 2: Install Go programming language on the runner
+      - name: Set up Go
+        # actions/setup-go@v5 = official action to install Go
+        uses: actions/setup-go@v5
+        # 'with' passes parameters to the action
+        with:
+          # Which Go version to install
+          go-version: '1.25'
+
+      # STEP 3: Compile your Go application
+      - name: Build the Go app
+        # 'run' executes a shell command directly
+        # go build = compile the code
+        # -v = verbose output (shows what's happening)
+        # ./... = all packages in current directory and subdirectories
+        run: go build -v ./...
+
+      # STEP 4: Execute the program to verify it works
+      - name: Run the app
+        # go run = compile and execute in one step
+        # main.go = the file containing the main function
+        run: go run main.go
+

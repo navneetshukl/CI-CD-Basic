@@ -1,0 +1,69 @@
+# ============================================
+# WORKFLOW FILE: 02-add-tests.yml
+# PURPOSE: CI pipeline that runs tests and builds the Go application
+# ============================================
+
+# Name of the workflow (shown in GitHub Actions UI)
+name: Go CI with Tests
+
+# ============================================
+# TRIGGER SECTION
+# ============================================
+# This workflow runs automatically when:
+# 1. Code is pushed to the 'main' branch
+# 2. A pull request is opened/updated targeting 'main'
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# ============================================
+# JOBS SECTION
+# ============================================
+# Define ONE job called 'test' that handles everything
+jobs:
+
+  # Define the 'test' job
+  test:
+
+    # Run this job on a fresh Ubuntu Linux machine
+    runs-on: ubuntu-latest
+
+    # ========================================
+    # STEPS SECTION (run in order, top to bottom)
+    # ========================================
+    steps:
+
+      # STEP 1: Clone your repository code onto the runner
+      - name: Get source code
+        # Official action to checkout (download) your repo
+        uses: actions/checkout@v4
+
+      # STEP 2: Install Go 1.25 on the runner
+      - name: Set up Go
+        # Official action to install Go language
+        uses: actions/setup-go@v5
+        with:
+          # Specify Go version
+          go-version: '1.25'
+
+      # STEP 3: Download all project dependencies (Gin, etc.)
+      - name: Download dependencies
+        # go mod download = fetch all packages listed in go.mod
+        # This is required before tests can run
+        run: go mod download
+
+      # STEP 4: Execute all unit tests
+      - name: Run tests
+        # go test = run all test files (*_test.go)
+        # -v = verbose output (shows each test name and result)
+        # ./... = all packages in the project
+        run: go test -v ./...
+
+      # STEP 5: Compile the application to ensure it still builds
+      - name: Build the app
+        # Final check: make sure the code still compiles
+        # go build = compile without running
+        run: go build -v ./...
+
