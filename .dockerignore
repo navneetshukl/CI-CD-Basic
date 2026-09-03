@@ -1,0 +1,40 @@
+# ============================================
+# .dockerignore: Files to exclude from Docker image
+# ============================================
+# Similar to .gitignore - tells Docker what to skip
+
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# CI/CD files (not needed in container)
+.github
+ci-cd/.github
+ci-cd/scripts
+
+# Documentation
+README.md
+INTENTIONAL_BUGS.md
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files (not needed in production)
+*_test.go
+coverage.out
+
+# Go build artifacts (will be rebuilt in container)
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+myapp

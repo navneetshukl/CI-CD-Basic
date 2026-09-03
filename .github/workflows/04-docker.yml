@@ -1,0 +1,132 @@
+# ============================================
+# WORKFLOW FILE: 04-docker.yml
+# PURPOSE: Build and push Docker image to container registry
+# ============================================
+
+# Name shown in GitHub Actions UI
+name: Docker Build & Push
+
+# ============================================
+# TRIGGER SECTION
+# ============================================
+# This workflow runs when:
+# - Code is pushed to main branch
+# - Manual trigger (workflow_dispatch)
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+
+# ============================================
+# ENVIRONMENT VARIABLES
+# ============================================
+# These are accessible in all jobs
+env:
+  # Docker image name
+  IMAGE_NAME: my-go-api
+  # Docker Hub username (you'll set this in secrets)
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+
+# ============================================
+# JOBS SECTION
+# ============================================
+jobs:
+
+  # ========================================
+  # JOB 1: Build and Push Docker Image
+  # ========================================
+  build-and-push:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # STEP 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # STEP 2: Set up Docker Buildx
+      - name: Set up Docker Buildx
+        # Buildx enables advanced Docker build features
+        # Like building for multiple architectures (AMD64, ARM64)
+        uses: docker/setup-buildx-action@v3
+
+      # STEP 3: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        # Uses credentials stored in GitHub Secrets
+        # DOCKER_TOKEN = password/token from Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      # STEP 4: Build Docker image
+      - name: Build Docker image
+        # Build the image using the Dockerfile
+        uses: docker/build-push-action@v5
+        with:
+          # Context: where to look for Dockerfile
+          # "." = current directory (where workflow runs)
+          context: .
+          
+          # Which Dockerfile to use
+          file: ./Dockerfile
+          
+          # Build in parallel for speed
+          parallel: true
+          
+          # Tags: versions of the image
+          tags: |
+            # Latest tag (always points to newest)
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            # Tag with commit SHA (unique per commit)
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          
+          # Cache: speed up future builds
+          # Saves build layers to GitHub Actions cache
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          
+          # Only push on main branch (not on PRs)
+          push: true
+
+      # STEP 5: Verify image was pushed
+      - name: Verify image pushed
+        run: |
+          echo "✅ Docker image built and pushed successfully!"
+          echo "Image: ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+
+# ============================================
+# HOW TO USE THIS WORKFLOW
+# ============================================
+#
+# PREREQUISITES:
+# 1. Have a Docker Hub account (https://hub.docker.com/)
+# 2. Create a repository on Docker Hub (e.g., "my-go-api")
+#
+# SETUP IN GITHUB:
+# 1. Go to Repository → Settings → Secrets and variables → Actions
+# 2. Add these secrets:
+#    - DOCKER_USERNAME: your Docker Hub username
+#    - DOCKER_TOKEN: your Docker Hub access token
+#
+# TO CREATE DOCKER TOKEN:
+# 1. Go to https://hub.docker.com/settings/security
+# 2. Click "Access Tokens"
+# 3. Create new token with Read/Write permissions
+# 4. Copy the token and add as DOCKER_TOKEN secret
+#
+# ============================================
+# IMAGE NAMING CONVENTION
+# ============================================
+#
+# docker_username/repository_name:tag
+#
+# Examples:
+#   navneetshukla/my-go-api:latest    ← Always latest version
+#   navneetshukla/my-go-api:abc123    ← Specific commit SHA
+#
+# To pull the image:
+#   docker pull navneetshukla/my-go-api:latest
+#
+# ============================================

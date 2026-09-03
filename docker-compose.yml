@@ -1,0 +1,46 @@
+# ============================================
+# docker-compose.yml: Run your app locally with Docker
+# PURPOSE: One command to start your entire application
+# ============================================
+
+# Version of docker-compose format
+version: '3.8'
+
+# ============================================
+# SERVICES SECTION
+# ============================================
+# Define the containers (services) that make up your app
+services:
+
+  # ========================================
+  # Service 1: Your Go API
+  # ========================================
+  api:
+    # Build from current directory using Dockerfile
+    build: .
+    
+    # Give the container a name (optional, makes it easier to find)
+    container_name: my-go-api
+    
+    # Environment variables (like global variables in your app)
+    environment:
+      - PORT=8080
+      - ENVIRONMENT=development
+    
+    # Port mapping: host:container
+    # Access app at http://localhost:8080
+    ports:
+      - "8080:8080"
+    
+    # Restart policy: restart if container crashes
+    restart: unless-stopped
+
+  # ========================================
+  # Service 2: (Optional) Redis for caching
+  # ========================================
+  # Uncomment if you want to add Redis
+  # redis:
+  #   image: redis:alpine
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
