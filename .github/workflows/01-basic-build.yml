@@ -55,11 +55,8 @@ jobs:
         # go build = compile the code
         # -v = verbose output (shows what's happening)
         # ./... = all packages in current directory and subdirectories
+        # NOTE: We only BUILD (compile) here, not RUN
+        # Running a web server would make the workflow hang forever!
         run: go build -v ./...
 
-      # STEP 4: Execute the program to verify it works
-      - name: Run the app
-        # go run = compile and execute in one step
-        # main.go = the file containing the main function
-        run: go run main.go
 
