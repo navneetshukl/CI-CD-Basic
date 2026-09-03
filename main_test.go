@@ -13,7 +13,7 @@ import (
 func setUpRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
-	
+
 	r.GET("/health", healthCheck)
 	api := r.Group("/api")
 	{
@@ -21,7 +21,7 @@ func setUpRouter() *gin.Engine {
 		api.POST("/users", createUser)
 		api.GET("/users/:id", getUserByID)
 	}
-	
+
 	return r
 }
 
@@ -56,7 +56,7 @@ func TestCreateUser(t *testing.T) {
 
 	user := User{Name: "John", Age: 30}
 	jsonValue, _ := json.Marshal(user)
-	
+
 	req, _ := http.NewRequest("POST", "/api/users", bytes.NewBuffer(jsonValue))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -104,7 +104,7 @@ func TestGetUserByID(t *testing.T) {
 
 	user := User{Name: "Alice", Age: 25}
 	jsonValue, _ := json.Marshal(user)
-	
+
 	req, _ := http.NewRequest("POST", "/api/users", bytes.NewBuffer(jsonValue))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -142,5 +142,28 @@ func TestGetUserNotFound(t *testing.T) {
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("Expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+// TestGetUserName will fail - intentionally checking for wrong name
+func TestGetUserName(t *testing.T) {
+	router := setUpRouter()
+	resetUsers()
+
+	user := User{Name: "Alice", Age: 25}
+	jsonValue, _ := json.Marshal(user)
+
+	req, _ := http.NewRequest("POST", "/api/users", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+
+	createdUser := response["user"].(map[string]interface{})
+	// INTENTIONALLY WRONG: Expecting "Bob" but getting "Alice"
+	if createdUser["name"] != "Bob" {
+		t.Errorf("Expected name 'Bob', got '%s'", createdUser["name"])
 	}
 }

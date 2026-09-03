@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
@@ -17,10 +18,15 @@ type User struct {
 
 // In-memory user store (for demo purposes)
 var (
-	users = map[int]*User{}
-	mu    sync.RWMutex
+	users  = map[int]*User{}
+	mu     sync.RWMutex
 	nextID = 1
 )
+
+// UnusedFunction is not used anywhere - this will trigger staticcheck warning
+func UnusedFunction() {
+	fmt.Println("This function is never called")
+}
 
 func main() {
 	// Initialize Gin router
@@ -44,7 +50,7 @@ func main() {
 // healthCheck returns server status
 func healthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"status": "healthy",
+		"status":  "healthy",
 		"message": "Server is running",
 	})
 }
@@ -86,7 +92,7 @@ func createUser(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "User created successfully",
-		"user": newUser,
+		"user":    newUser,
 	})
 }
 
@@ -111,6 +117,15 @@ func getUserByID(c *gin.Context) {
 		})
 		return
 	}
+
+	// Unreachable code - this will never execute
+	if id == 0 {
+		fmt.Println("This will never print")
+		return
+	}
+
+	// Format string mismatch bug - go vet will catch this
+	fmt.Printf("User: %d\n", user)  // Wrong format verb: should be %v or %+v
 
 	c.JSON(http.StatusOK, user)
 }

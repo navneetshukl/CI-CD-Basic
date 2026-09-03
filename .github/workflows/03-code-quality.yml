@@ -1,0 +1,160 @@
+# ============================================
+# WORKFLOW FILE: 03-code-quality.yml
+# PURPOSE: Run code quality checks to find bugs and enforce style
+# ============================================
+
+# Name of the workflow (shown in GitHub Actions UI)
+name: Code Quality Checks
+
+# ============================================
+# TRIGGER SECTION
+# ============================================
+# This workflow runs automatically when:
+# - Code is pushed to the 'main' or 'develop' branch
+# - A pull request is opened/updated targeting 'main'
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+# ============================================
+# JOBS SECTION
+# ============================================
+jobs:
+
+  # ========================================
+  # JOB 1: Code Quality
+  # ========================================
+  quality:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # STEP 1: Download your repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # STEP 2: Install Go 1.25
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      # STEP 3: Download all dependencies
+      - name: Download dependencies
+        run: go mod download
+
+      # ========================================
+      # QUALITY CHECK 1: Format Check (gofmt)
+      # ========================================
+      - name: Check code formatting
+        # gofmt checks if your code follows Go's standard style
+        # -l = list files that don't match (don't fix them)
+        # If output is empty = code is properly formatted
+        # If output has files = code needs formatting
+        run: |
+          echo "=== Checking code format with gofmt ==="
+          output=$(gofmt -l .)
+          if [ -n "$output" ]; then
+            echo "❌ Files need formatting:"
+            echo "$output"
+            echo ""
+            echo "Run 'gofmt -w .' to fix formatting"
+            exit 1
+          else
+            echo "✅ Code is properly formatted"
+          fi
+
+      # ========================================
+      # QUALITY CHECK 2: Bug Detection (go vet)
+      # ========================================
+      - name: Run go vet (bug detection)
+        # go vet analyzes code for common mistakes and suspicious constructs
+        # It catches bugs like:
+        #   - Printf arguments mismatch
+        #   - Unreachable code
+        #   - Incorrect mutex usage
+        #   - Invalid HTTP verbs
+        run: |
+          echo "=== Running go vet for bug detection ==="
+          if go vet ./...; then
+            echo "✅ No issues found by go vet"
+          else
+            echo "❌ go vet found issues"
+            exit 1
+          fi
+
+      # ========================================
+      # QUALITY CHECK 3: Advanced Linting (staticcheck)
+      # ========================================
+      - name: Install staticcheck
+        # staticcheck is an advanced linter that finds more issues than go vet
+        # It implements hundreds of checks including:
+        #   - Unused variables/functions
+        #   -Inefficient string operations
+        #   - Context misuse
+        #   - SQL injection vulnerabilities
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+
+      - name: Run staticcheck
+        # Run staticcheck on all packages
+        # This is more thorough than go vet
+        run: staticcheck ./...
+
+      # ========================================
+      # QUALITY CHECK 4: Run Tests with Coverage
+      # ========================================
+      - name: Run tests with coverage
+        # go test runs all unit tests
+        # -v = verbose output
+        # -cover = show coverage percentage
+        # -coverprofile = save coverage data to file
+        run: |
+          echo "=== Running tests with coverage ==="
+          go test -v -cover -coverprofile=coverage.out ./...
+          
+          # Show coverage summary
+          echo ""
+          echo "=== Coverage Summary ==="
+          go tool cover -func=coverage.out
+          
+          # Calculate overall coverage percentage
+          total=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo ""
+          echo "Overall coverage: ${total}%"
+
+      # STEP 8: Build the application
+      - name: Build application
+        run: go build -v ./...
+
+# ============================================
+# EXPLANATION OF QUALITY TOOLS
+# ============================================
+# 
+# gofmt (Format Checker)
+# -----------------------
+# - Checks if code follows Go's official formatting rules
+# - Rules: indentation, line length, import ordering, etc.
+# - Auto-fix: gofmt -w .
+#
+# go vet (Bug Detector)
+# ---------------------
+# - Analyzes code for suspicious constructs
+# - Catches common programming errors
+# - Zero false positives (only reports real issues)
+#
+# staticcheck (Advanced Linter)
+# -----------------------------
+# - More comprehensive than go vet
+# - 100+ checks for code quality
+# - Finds performance issues, security problems
+#
+# Test Coverage
+# ------------
+# - Shows what percentage of code is tested
+# - Higher is better, but 80% is a good target
+# - Untested code is a risk
+#
+# ============================================
