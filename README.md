@@ -22,6 +22,10 @@ A beginner-friendly guide to understanding and implementing CI/CD pipelines from
 14. [Complete CI/CD Pipeline (Production)](#-complete-cicd-pipeline-production)
 15. [Step 5: Deployment Pipeline](#-step-5-deployment-pipeline)
 16. [What is Jenkins? (Bonus)](#-what-is-jenkins-bonus)
+17. [📚 Additional Resources](#-additional-resources)
+    - [Environment Configurations](./docs/01-environment-configurations.md)
+    - [Rollback Strategies](./docs/02-rollback-strategies.md)
+    - [Health Checks & Verification](./docs/03-health-checks.md)
 
 ---
 
@@ -690,6 +694,18 @@ The workflow will:
 
 **When to use Jenkins**: Enterprise needing full control  
 **When to use GitHub Actions**: Quick setup, less maintenance  
+
+---
+
+## 📚 Additional Resources
+
+These detailed guides cover advanced deployment topics:
+
+| Document | Description |
+|----------|-------------|
+| [Environment Configurations](./docs/01-environment-configurations.md) | Managing Dev/Staging/Production environments, GitHub Secrets setup |
+| [Rollback Strategies](./docs/02-rollback-strategies.md) | What to do when deployment fails, rollback scripts & workflows |
+| [Health Checks & Verification](./docs/03-health-checks.md) | Verifying deployments, Docker health checks, auto-rollback |
 
 ---
 
