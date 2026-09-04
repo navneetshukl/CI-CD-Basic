@@ -1,6 +1,6 @@
 module github.com/navneetshukla/test
 
-go 1.25.1
+go 1.25
 
 require github.com/gin-gonic/gin v1.12.0
 

@@ -1,257 +1,246 @@
 # 🚨 INTENTIONAL BUGS FOR LEARNING
 
-This file documents the bugs we intentionally introduced to demonstrate what CI/CD pipeline failures look like in GitHub Actions.
+This file shows you **exact line changes** to trigger specific CI/CD failures.
 
 ---
 
-## What We Broke
+## ⚠️ Important
 
-### Bug 1: Code Formatting Issue
-**File:** `main.go` (multiple locations)
-**Issue:** Code needs to be formatted with `gofmt`
+**Never paste new blocks that redeclare existing code!**
 
+Your main.go already has: package main, type User struct, func main()
+Your main_test.go already has: func TestGetUserName(t *testing.T)
+
+For bugs 1-3: we show which line to CHANGE.
+For bugs 4-5: safe to append (new unique names).
+
+---
+
+## Bug 1: Code Formatting (gofmt fails)
+
+**File:** main.go
+
+**Find (line ~27):**
+```
+func main() {
+    // Initialize Gin router
+    r := gin.Default()
+```
+
+**Change to:**
+```
+func main() {
+       // Initialize Gin router   ← extra spaces (bad!)
+    r := gin.Default()
+```
+
+Or run:
 ```bash
-# Check locally:
-gofmt -l .
-# Output: main.go  ← This file needs formatting
+sed -i "" 's|// Initialize Gin router|       // Initialize Gin router|' main.go
 ```
 
-**Expected GitHub Actions Error:**
-```
-❌ Files need formatting:
-main.go
+**Expected:** `❌ Files need formatting: main.go`
+**Fix:** `gofmt -w main.go`
 
-Run 'gofmt -w .' to fix formatting
-```
 
 ---
 
-### Bug 2: Printf Format Mismatch (go vet)
-**File:** `main.go` line 128
-**Issue:** Using `%d` (integer format) for a struct
+## Bug 2: Printf Format Mismatch (go vet fails)
 
+**File:** main.go
+**Find (line 123):**
 ```go
-// WRONG:
-fmt.Printf("User: %d\n", user)
-
-// RIGHT:
-fmt.Printf("User: %v\n", user)
-// or
-fmt.Printf("User: %+v\n", user)
+fmt.Printf("User: %v\n", user) // Fixed: changed %d to %v
 ```
 
-**Expected GitHub Actions Error:**
-```
-./main.go:128:20: fmt.Printf format %d has arg user of wrong type *github.com/navneetshukla/test.User
-```
-
----
-
-### Bug 3: Staticcheck Warning
-**File:** `main.go` line 128
-**Issue:** Same as above, staticcheck catches it too
-
-**Expected GitHub Actions Error:**
-```
-main.go:128:13: Printf format %d has arg #1 of wrong type *github.com/navneetshukla/test.User (SA5009)
-```
-
----
-
-### Bug 4: Failing Test
-**File:** `main_test.go` line 166
-**Issue:** Test expects "Bob" but gets "Alice"
-
+**Change %v to %d:**
 ```go
-// WRONG:
-if createdUser["name"] != "Bob" {
-    t.Errorf("Expected name 'Bob', got '%s'", createdUser["name"])
-}
+fmt.Printf("User: %d\n", user) // BAD: %d for struct
+```
 
-// RIGHT:
+**Expected:** `fmt.Printf format %d has arg user of wrong type *main.User`
+**Fix:** Change %d back to %v
+
+
+---
+
+## Bug 3: Failing Test
+
+**File:** main_test.go
+**Find (line 166):**
+```go
 if createdUser["name"] != "Alice" {
     t.Errorf("Expected name 'Alice', got '%s'", createdUser["name"])
 }
 ```
 
-**Expected GitHub Actions Error:**
-```
-main_test.go:167: Expected name 'Bob', got 'Alice'
---- FAIL: TestGetUserName (0.00s)
-```
-
----
-
-### Bug 5: Unused Function
-**File:** `main.go` lines 26-29
-**Issue:** `UnusedFunction()` is defined but never called
-
+**Change "Alice" to "Bob":**
 ```go
-// UnusedFunction is not used anywhere
-func UnusedFunction() {
-    fmt.Println("This function is never called")
+if createdUser["name"] != "Bob" {  // BAD: actual is "Alice"
+    t.Errorf("Expected name 'Bob', got '%s'", createdUser["name"])
 }
 ```
 
-**Note:** Staticcheck may or may not catch this depending on the version.
+**Expected:** `Expected name 'Bob', got 'Alice' --- FAIL: TestGetUserName`
+**Fix:** Change "Bob" back to "Alice"
+
 
 ---
 
-## What Will Happen in GitHub Actions
+## Bug 4: Unused Function (staticcheck fails)
 
-When you push this code:
-
-```
-Checkout code
-      ↓
-Set up Go
-      ↓
-Download dependencies
-      ↓
-Check code formatting (gofmt)
-      ↓
-❌ FAIL: main.go needs formatting
-      ↓
-[Pipeline stops here - remaining steps don't run]
-```
-
-OR if formatting passes:
-
-```
-...
-      ↓
-Run go vet (bug detection)
-      ↓
-❌ FAIL: Printf format %d has wrong type
-      ↓
-[Pipeline stops here]
-```
-
-OR if vet passes:
-
-```
-...
-      ↓
-Run staticcheck
-      ↓
-❌ FAIL: Printf format %d has wrong type (SA5009)
-      ↓
-[Pipeline stops here]
-```
-
-OR if staticcheck passes:
-
-```
-...
-      ↓
-Run tests with coverage
-      ↓
-❌ FAIL: TestGetUserName - Expected 'Bob', got 'Alice'
-      ↓
-[Pipeline stops here]
-```
-
----
-
-## How to See the Failures
-
-1. Push the code to GitHub:
-   ```bash
-   cd ci-cd
-   git add .
-   git commit -m "Add intentional bugs for learning"
-   git push origin main
-   ```
-
-2. Go to your GitHub repository → **Actions** tab
-
-3. Click on the failing workflow run
-
-4. You'll see something like:
-   ```
-   ❌ Code Quality Checks / Quality Checks
-   
-   Run go vet (bug detection)
-   
-   Error:
-   ./main.go:128:20: fmt.Printf format %d has arg user of wrong type
-   ```
-
-5. Click on individual steps to see detailed logs
-
----
-
-## How to Fix Each Issue
-
-### Fix 1: Format Code
-```bash
-gofmt -w main.go main_test.go
-```
-
-### Fix 2: Fix Printf
+**File:** main.go
+**Add to END of main.go (safe - new unique name):**
 ```go
-// Change this:
-fmt.Printf("User: %d\n", user)
-
-// To this:
-fmt.Printf("User: %v\n", user)
-```
-
-### Fix 3: Fix Test
-```go
-// Change this:
-if createdUser["name"] != "Bob" {
-
-// To this:
-if createdUser["name"] != "Alice" {
-```
-
-### Fix 4: Remove Unused Function
-Delete these lines from main.go:
-```go
-// UnusedFunction is not used anywhere
-func UnusedFunction() {
+// Add to bottom of main.go
+func UnusedFunctionForCI() {
     fmt.Println("This function is never called")
+    x := 10
+    y := 20
+    _ = x + y
 }
 ```
 
----
+**Expected:** `func UnusedFunctionForCI is unused (U1000)`
+**Fix:** Delete the function
 
-## Learning Goals
-
-After seeing these failures, you should understand:
-
-1. ✅ How GitHub Actions displays errors
-2. ✅ What each quality check tool catches
-3. ✅ How to read error messages
-4. ✅ How to fix each type of issue
-5. ✅ Why these checks exist (they catch real bugs!)
 
 ---
 
-## The Complete Fix
+## Bug 5: Syntax Error (build fails)
 
-If you want to fix everything at once:
-
-```bash
-# 1. Format code
-gofmt -w main.go main_test.go
-
-# 2. Fix the Printf
-sed -i '' 's/fmt.Printf("User: %d\\n", user)/fmt.Printf("User: %v\\n", user)/g' main.go
-
-# 3. Fix the test
-sed -i '' 's/createdUser\["name"\] != "Bob"/createdUser["name"] != "Alice"/g' main_test.go
-
-# 4. Remove unused function
-# (manually delete lines 26-29 in main.go)
-
-# 5. Verify everything passes
-go vet ./...
-go test ./...
-gofmt -l .
+**File:** main.go
+**Add to END of main.go (safe - new unique name):**
+```go
+// Add to bottom of main.go
+func BrokenFunctionForCI() {
+    fmt.Println("missing closing brace")
+// Missing } here
 ```
 
+**Expected:** `missing '{' or ')' at end of code block`
+**Fix:** Add the missing }
+
+
 ---
 
-**Remember:** Breaking things on purpose is one of the best ways to learn! 🎓
+## Bug 6: Wrong Go Version
+
+**File:** .github/workflows/00-complete-ci-cd.yml
+**Change:**
+```yaml
+go-version: '1.25'
+```
+**To:**
+```yaml
+go-version: '99.99'  # BAD: does not exist
+```
+
+**Expected:** `Unable to find Go version '99.99'`
+**Fix:** Change back to '1.25'
+
+
+---
+
+## Bug 7: Docker Image Wrong
+
+**File:** Dockerfile
+**Change:**
+```dockerfile
+FROM golang:1.25-alpine
+```
+**To:**
+```dockerfile
+FROM golang:nonexistent-version
+```
+
+**Expected:** `failed to solve: golang:nonexistent-version`
+**Fix:** Change back to `FROM golang:1.25-alpine`
+
+
+---
+
+## Bug 8: Missing Secret
+
+**File:** GitHub Settings → Secrets and variables → Actions
+**Action:** Delete the DOCKER_USERNAME secret
+
+**Expected:** `Username and password required`
+**Fix:** Re-add the secret in GitHub Settings
+
+
+---
+
+## 🧪 Safe Reproduction Script
+
+### What is `.bak`?
+When you run the script, it creates backup files (`.bak`) of your original code:
+- `main.go.bak` = copy of your original `main.go`
+- `main_test.go.bak` = copy of your original `main_test.go`
+
+These let you restore the original code after testing the bugs.
+
+### Run the Script
+
+```bash
+#!/bin/bash
+# apply-bugs.sh - Apply bugs with LINE-LEVEL changes
+
+set -e
+
+echo "Backing up..."
+cp main.go main.go.bak
+cp main_test.go main_test.go.bak
+
+echo "Bug 1: Bad formatting..."
+sed -i "" 's|// Initialize Gin router|       // Initialize Gin router|' main.go
+
+echo "Bug 2: Printf wrong format..."
+sed -i '' 's/%v\\n/%d\\n/' main.go
+
+echo "Bug 3: Wrong expected name..."
+sed -i "" 's|!= "Alice"|!= "Bob"|' main_test.go
+
+echo "Bug 4: Unused function (append)..."
+cat >> main.go << 'EOF'
+func UnusedFunctionForCI() {
+    fmt.Println("This function is never called")
+}
+EOF
+
+echo "Bug 5: Syntax error (append)..."
+cat >> main.go << 'EOF'
+func BrokenFunctionForCI() {
+    fmt.Println("missing closing brace")
+# Missing }
+EOF
+
+echo "Done! Push to see failures:"
+echo "git add . && git commit -m 'Apply bugs' && git push"
+```
+
+**Restore:**
+```bash
+cp main.go.bak main.go && cp main_test.go.bak main_test.go
+```
+
+
+---
+
+## What Fails in Pipeline
+
+| Bugs Present | Pipeline Stops At |
+|--------------|-------------------|
+| Bug 5 (syntax) | Step 4: Build |
+| Bug 5 fixed, Bug 3 | Step 5: Tests |
+| Bugs 3,5 fixed, Bug 1 | Step 6: gofmt |
+| Bugs 1,3,5 fixed, Bug 2 | Step 7: go vet |
+| Bugs 1,2,3,5 fixed, Bug 4 | Step 8: staticcheck |
+
+---
+
+## Try One Bug at a Time
+
+Best learning: apply one, fix it, push, watch it pass, then try the next.
+
+**Remember:** Each bug should produce its specific error - not "redeclared" errors! 🎓

@@ -24,11 +24,10 @@ on:
 # ============================================
 # ENVIRONMENT VARIABLES
 # ============================================
+# Note: Real values come from GitHub Secrets (see steps below)
 env:
   IMAGE_NAME: my-go-api
-  DOCKER_USERNAME: navneetshukla
-  SERVER_HOST: your-server-ip
-  SERVER_USER: deploy-user
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   SERVER_PORT: 22
 
 # ============================================

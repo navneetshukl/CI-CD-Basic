@@ -706,6 +706,9 @@ These detailed guides cover advanced deployment topics:
 | [Environment Configurations](./docs/01-environment-configurations.md) | Managing Dev/Staging/Production environments, GitHub Secrets setup |
 | [Rollback Strategies](./docs/02-rollback-strategies.md) | What to do when deployment fails, rollback scripts & workflows |
 | [Health Checks & Verification](./docs/03-health-checks.md) | Verifying deployments, Docker health checks, auto-rollback |
+| [INTENTIONAL_BUGS.md](./INTENTIONAL_BUGS.md) | Practice bugs to test your CI/CD pipeline |
+
+Note: The Prerequisites and Glossary docs are optional and can be added later if needed.
 
 ---
 
