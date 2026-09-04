@@ -1,0 +1,104 @@
+# ============================================
+# WORKFLOW FILE: 05-deploy.yml
+# PURPOSE: Manual deployment workflow (can be triggered independently)
+# Used for hotfixes or when you need to redeploy manually
+# ============================================
+
+# Name shown in GitHub Actions UI
+name: Manual Deploy to Production
+
+# ============================================
+# TRIGGER SECTION
+# ============================================
+# This workflow runs when:
+# - Manual trigger from GitHub UI (workflow_dispatch)
+# - Allows you to deploy anytime, regardless of CI status
+on:
+  workflow_dispatch:
+    inputs:
+      image-tag:
+        description: 'Docker image tag to deploy (default: latest)'
+        required: false
+        default: 'latest'
+
+# ============================================
+# ENVIRONMENT VARIABLES
+# ============================================
+env:
+  IMAGE_NAME: my-go-api
+  DOCKER_USERNAME: navneetshukla
+  SERVER_HOST: your-server-ip
+  SERVER_USER: deploy-user
+  SERVER_PORT: 22
+
+# ============================================
+# JOBS SECTION
+# ============================================
+jobs:
+
+  # ========================================
+  # JOB 1: Manual Deploy to Production Server
+  # ========================================
+  deploy:
+    name: Manual Deploy to Server
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # STEP 1: Checkout code (to get version info if needed)
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # STEP 2: Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # STEP 3: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      # STEP 4: SSH into server and deploy
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ env.SERVER_PORT }}
+          script: |
+            echo "🚀 Starting manual deployment..."
+            
+            # Determine which image to deploy
+            if [ "${{ github.event.inputs.image-tag }}" != "" ]; then
+              IMAGE_TAG="${{ github.event.inputs.image-tag }}"
+              echo "📌 Deploying specific tag: $IMAGE_TAG"
+            else
+              IMAGE_TAG="latest"
+              echo "📌 Deploying latest image"
+            fi
+            
+            # Pull Docker image
+            echo "📦 Pulling image: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG"
+            docker pull ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG
+            
+            # Stop existing container
+            echo "🛑 Stopping existing container..."
+            docker stop ${{ env.IMAGE_NAME }} || true
+            docker rm ${{ env.IMAGE_NAME }} || true
+            
+            # Run new container
+            echo "▶️ Starting new container..."
+            docker run -d \
+              --name ${{ env.IMAGE_NAME }} \
+              -p 8080:8080 \
+              --restart unless-stopped \
+              ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG
+            
+            # Remove old images
+            echo "🧹 Cleaning up..."
+            docker image prune -f
+            
+            echo "✅ Manual deployment complete!"

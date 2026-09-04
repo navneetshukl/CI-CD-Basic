@@ -7,18 +7,21 @@ A beginner-friendly guide to understanding and implementing CI/CD pipelines from
 ## 📚 Table of Contents
 
 1. [What is CI/CD?](#what-is-cicd)
-2. [Key Concepts](#key-concepts)
-3. [Pipeline Flow](#pipeline-flow)
+2. [Key Concepts](#-key-concepts)
+3. [Pipeline Flow](#-pipeline-flow)
 4. [Step 1: Basic Build Pipeline](#-step-1-basic-build-pipeline)
-5. [How to Use](#-how-to-use)
-6. [Next Steps](#-next-steps)
-7. [Workflow Syntax Reference](#-workflow-syntax-reference)
-8. [Complete Learning Path](#-complete-learning-path)
-9. [Step 2: Adding Automated Tests](#-step-2-adding-automated-tests)
-10. [Step 3: Code Quality Checks](#-step-3-code-quality-checks)
-11. [Step 4: Docker - Containerize Your App](#-step-4-docker-containerize-your-app)
-12. [Complete CI/CD Pipeline (Production)](#-complete-cicd-pipeline-production)
-13. [What is Jenkins? (Bonus)](#-what-is-jenkins-bonus)
+5. [Line-by-Line Explanation](#-line-by-line-explanation)
+6. [How GitHub Actions Processes This](#-how-github-actions-processes-this)
+7. [How to Use](#-how-to-use)
+8. [Common Workflow File Names](#-common-workflow-file-names)
+9. [Workflow Syntax Reference](#-workflow-syntax-reference)
+10. [Complete Learning Path](#-complete-learning-path)
+11. [Step 2: Adding Automated Tests](#-step-2-adding-automated-tests)
+12. [Step 3: Code Quality Checks](#-step-3-code-quality-checks)
+13. [Step 4: Docker - Containerize Your App](#-step-4-docker-containerize-your-app)
+14. [Complete CI/CD Pipeline (Production)](#-complete-cicd-pipeline-production)
+15. [Step 5: Deployment Pipeline](#-step-5-deployment-pipeline)
+16. [What is Jenkins? (Bonus)](#-what-is-jenkins-bonus)
 
 ---
 
@@ -54,10 +57,10 @@ A beginner-friendly guide to understanding and implementing CI/CD pipelines from
 ## 🔄 Pipeline Flow
 
 ```
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│  Commit  │───▶│  Build   │───▶│   Test   │───▶│  Deploy  │
-│   Code   │    │          │    │          │    │          │
-└──────────┘    └──────────┘    └──────────┘    └──────────┘
+┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+│  Commit  │───▶│  Build   │───▶│   Test   │───▶│ Quality  │───▶│  Deploy  │
+│   Code   │    │          │    │          │    │  Check   │    │          │
+└──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────────┘
 ```
 
 ---
@@ -325,11 +328,11 @@ Here's what we've built step by step:
 - Uses `needs:` to ensure sequential execution
 - File: `00-complete-ci-cd.yml`
 
-### 📌 Level 5: Deployment (Coming Soon)
-- Deploy to a server automatically
-- Multiple environments (dev, staging, prod)
-- File: `05-deploy.yml` (coming soon)
-
+### 📌 Level 5: Deployment
+- Deploy to a server automatically via SSH
+- Pull Docker image and run container
+- Health check verification after deployment
+- Files: `05-deploy.yml` (manual) and `00-complete-ci-cd.yml` (automatic)
 ---
 
 ## 🧪 Step 2: Adding Automated Tests
@@ -587,6 +590,9 @@ quality:
   
 docker:
   needs: quality  # Wait for quality
+
+deploy:
+  needs: docker   # Wait for Docker build to complete
 ```
 
 ### Flow
@@ -597,21 +603,77 @@ Tests → If fail, STOP!
   ↓
 Quality → If fail, STOP!
   ↓
-Docker → Only runs if all passed!
+Docker → Build & push image
+  ↓
+Deploy → SSH to server & run container
 ```
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `00-complete-ci-cd.yml` | Complete pipeline with all steps |
+| `05-deploy.yml` | Standalone manual deployment |
 
 ### When to Use Which
 
 | Workflow | Use For |
 |----------|---------|
-| `00-complete-ci-cd.yml` | Production deployment |
+| `00-complete-ci-cd.yml` | Production deployment (automatic) |
+| `05-deploy.yml` | Manual hotfix deployments |
 | `01-04.yml` | Learning and development |
 
 ### Benefits
-✅ No broken deployments  
-✅ Clear failure points  
-✅ Sequential execution  
-✅ Industry standard  
+✅ No broken deployments
+✅ Clear failure points
+✅ Sequential execution
+✅ Industry standard
+✅ Automatic health checks
+  needs: quality  # Wait for quality
+
+---
+
+## 🚀 Step 5: Deployment Pipeline
+
+### Overview
+
+Now that your app builds, tests pass, quality checks succeed, and Docker image is created — it's time to **deploy it to a real server**!
+
+This guide covers:
+- SSH-based deployment to a remote server
+- Docker pull + run on production host
+- Environment-specific configurations
+- Secrets management
+- Health checks after deployment
+- Rollback strategies
+
+---
+
+### Prerequisites
+
+Before we start, you need:
+
+1. **A remote server** with Docker installed
+2. **SSH access** to that server
+3. **GitHub Secrets** configured in your repository
+
+---
+
+### Deployment Architecture
+
+```
+GitHub Actions → SSH → Remote Server → Docker Container
+     ↓                ↓            ↓
+  Push code    Execute commands  Run container
+```
+
+The workflow will:
+1. Build Docker image (already done in Step 4)
+2. Push image to Docker Hub (already done in Step 4)
+3. SSH into remote server
+4. Pull latest image from Docker Hub
+5. Run container with new image
+6. Verify health check passes
 
 ---
 
