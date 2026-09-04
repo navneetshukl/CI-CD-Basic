@@ -169,9 +169,11 @@ jobs:
             docker run -d \
               --name my-go-api \
               -p 8080:8080 \
-              -e APP_ENV=${{ steps.env.outputs.ENV }} \
+              -e ENVIRONMENT=${{ steps.env.outputs.ENV }} \
               navneetshukla/my-go-api:${{ github.sha }}
 ```
+
+> ⚠️ **Note:** The `ENVIRONMENT` variable is passed to the container as an example of environment-aware deployment. To make your app actually use it, update `main.go` to read it with `os.Getenv("ENVIRONMENT")` and act on it (e.g. log levels, feature flags, DB selection). The sample app in this project has a hardcoded port — see the Dockerfile (`EXPOSE 8080` and `CMD ["./myapp"]`).
 
 ---
 

@@ -26,6 +26,7 @@ A beginner-friendly guide to understanding and implementing CI/CD pipelines from
     - [Environment Configurations](./docs/01-environment-configurations.md)
     - [Rollback Strategies](./docs/02-rollback-strategies.md)
     - [Health Checks & Verification](./docs/03-health-checks.md)
+    - [INTENTIONAL_BUGS](./INTENTIONAL_BUGS.md) ← Practice breaking your pipeline!
 
 ---
 
@@ -625,15 +626,16 @@ Deploy → SSH to server & run container
 |----------|---------|
 | `00-complete-ci-cd.yml` | Production deployment (automatic) |
 | `05-deploy.yml` | Manual hotfix deployments |
-| `01-04.yml` | Learning and development |
+| `01-basic-build.yml` → `04-docker.yml` | Learning and development (one per stage) |
 
 ### Benefits
 ✅ No broken deployments
 ✅ Clear failure points
-✅ Sequential execution
+✅ Jobs run in dependency order (each waits for its prerequisites)
 ✅ Industry standard
 ✅ Automatic health checks
-  needs: quality  # Wait for quality
+
+> 💡 **Note on parallel vs sequential:** jobs in a workflow run in **parallel** by default. The `needs:` keyword does NOT make them run one after another — it only defines the **dependency graph**. GitHub Actions starts all jobs whose dependencies are already satisfied at the same time. This is more efficient. The `needs:` keyword only ensures that a job will **not start** until its prerequisites have **succeeded** — so a failing build stops the whole chain before tests, quality checks, or deploy ever run.
 
 ---
 

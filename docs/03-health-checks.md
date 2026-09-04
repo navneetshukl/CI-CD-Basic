@@ -195,7 +195,7 @@ func main() {
 ### Method 1: Dockerfile HEALTHCHECK
 
 ```dockerfile
-FROM golang:1.25
+FROM alpine:latest   # Your final stage — compiled binary is copied in
 
 # ... your app setup ...
 

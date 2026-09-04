@@ -85,7 +85,7 @@ This stage runs **gofmt** *and* **go vet**. Pick one (or try both!).
 
 **File:** `main.go`
 
-**Change:** inside `healthCheck`, replace the tab indentation with spaces on the `c.JSON` line (gofmt rejects any line that mixes tabs and spaces incorrectly).
+**Change:** inside `healthCheck`, replace the leading tab with spaces on the `c.JSON` line. (`gofmt` requires Go code to use **tabs** for indentation, not spaces — even one line with spaces will be flagged.)
 
 ```go
 func healthCheck(c *gin.Context) {
