@@ -1,246 +1,231 @@
-# 🚨 INTENTIONAL BUGS FOR LEARNING
+# INTENTIONAL_BUGS.md
 
-This file shows you **exact line changes** to trigger specific CI/CD failures.
-
----
-
-## ⚠️ Important
-
-**Never paste new blocks that redeclare existing code!**
-
-Your main.go already has: package main, type User struct, func main()
-Your main_test.go already has: func TestGetUserName(t *testing.T)
-
-For bugs 1-3: we show which line to CHANGE.
-For bugs 4-5: safe to append (new unique names).
+> A hands-on playbook to **break** this CI/CD pipeline on purpose.
+> Each stage lists a tiny, surgical change you can make to see *exactly* why and where the pipeline fails.
+> Roll it back, move to the next stage, learn the failure mode.
 
 ---
 
-## Bug 1: Code Formatting (gofmt fails)
+## ⚠️ How to use this file
 
-**File:** main.go
+1. Pick a stage below.
+2. Apply **only** that stage's change.
+3. Commit & push to `main` (or run the relevant workflow).
+4. Watch the pipeline fail at that step. Read the error.
+5. Revert the change (`git checkout -- <file>`) and move to the next stage.
 
-**Find (line ~27):**
-```
-func main() {
-    // Initialize Gin router
-    r := gin.Default()
-```
-
-**Change to:**
-```
-func main() {
-       // Initialize Gin router   ← extra spaces (bad!)
-    r := gin.Default()
-```
-
-Or run:
-```bash
-sed -i "" 's|// Initialize Gin router|       // Initialize Gin router|' main.go
-```
-
-**Expected:** `❌ Files need formatting: main.go`
-**Fix:** `gofmt -w main.go`
-
+> 💡 Tip: Commit each bug separately so you can clearly see which one broke the pipeline.
 
 ---
 
-## Bug 2: Printf Format Mismatch (go vet fails)
+## 🧱 Stage 1 — Build fails (`01-basic-build.yml` / Build job in `00-complete-ci-cd.yml`)
 
-**File:** main.go
-**Find (line 123):**
+**Why this fails:** the compiler cannot produce a binary because of a syntax error.
+
+**File:** `main.go`
+
+**Change:** remove a closing brace (or any `{` / `}`) so the file no longer compiles.
+
 ```go
-fmt.Printf("User: %v\n", user) // Fixed: changed %d to %v
+// In func getUserByID, delete the opening brace of the function:
+// Before:
+// func getUserByID(c *gin.Context) {
+//   ...
+// }
+
+// After (missing `{`):
+// func getUserByID(c *gin.Context)
+//   ...
+// }
 ```
 
-**Change %v to %d:**
-```go
-fmt.Printf("User: %d\n", user) // BAD: %d for struct
+**Expected error in pipeline:**
+
 ```
-
-**Expected:** `fmt.Printf format %d has arg user of wrong type *main.User`
-**Fix:** Change %d back to %v
-
+./main.go:95:6: missing function body for "getUserByID"
+# github.com/navneetshukla/test
+exit status 1
+```
 
 ---
 
-## Bug 3: Failing Test
+## 🧪 Stage 2 — Tests fail (`02-add-tests.yml` / Test job)
 
-**File:** main_test.go
-**Find (line 166):**
+**Why this fails:** a unit test asserts the wrong expected value.
+
+**File:** `main_test.go`
+
+**Change:** in `TestGetUserName`, change the expected name to something that won't match the user we create ("Alice").
+
 ```go
+// Before (line ~166):
 if createdUser["name"] != "Alice" {
-    t.Errorf("Expected name 'Alice', got '%s'", createdUser["name"])
+
+// After:
+if createdUser["name"] != "Bob" {
+```
+
+**Expected error in pipeline:**
+
+```
+--- FAIL: TestGetUserName (0.00s)
+    main_test.go:167: Expected name 'Bob', got 'Alice'
+FAIL
+exit status 1
+FAIL    github.com/navneetshukla/test  0.XXXs
+```
+
+---
+
+## 🧹 Stage 3 — Code Quality fails (`03-code-quality.yml`)
+
+This stage runs **gofmt** *and* **go vet**. Pick one (or try both!).
+
+### 3a. `gofmt` failure — bad indentation
+
+**File:** `main.go`
+
+**Change:** inside `healthCheck`, replace the tab indentation with spaces on the `c.JSON` line (gofmt rejects any line that mixes tabs and spaces incorrectly).
+
+```go
+func healthCheck(c *gin.Context) {
+   c.JSON(http.StatusOK, gin.H{   // ← replace the leading tab with 3 spaces
+		"status":  "healthy",
+		"message": "Server is running",
+	})
 }
 ```
 
-**Change "Alice" to "Bob":**
+**Expected error:**
+
+```
+❌ Files need formatting:
+main.go
+Run 'gofmt -w .' to fix formatting
+```
+
+### 3b. `go vet` failure — printf format mismatch
+
+**File:** `main.go` (line ~123)
+
+**Change:** use a `%d` (integer) verb for a non-integer value.
+
 ```go
-if createdUser["name"] != "Bob" {  // BAD: actual is "Alice"
-    t.Errorf("Expected name 'Bob', got '%s'", createdUser["name"])
-}
+// Before:
+fmt.Printf("User: %v\n", user)
+
+// After:
+fmt.Printf("User: %d\n", user)   // %d expects an integer, but `user` is a *User
 ```
 
-**Expected:** `Expected name 'Bob', got 'Alice' --- FAIL: TestGetUserName`
-**Fix:** Change "Bob" back to "Alice"
+**Expected error:**
 
+```
+# github.com/navneetshukla/test
+./main.go:123:13: Printf format %d has arg user of wrong type *User
+```
 
 ---
 
-## Bug 4: Unused Function (staticcheck fails)
+## 🐳 Stage 4 — Docker build fails (`04-docker.yml`)
 
-**File:** main.go
-**Add to END of main.go (safe - new unique name):**
-```go
-// Add to bottom of main.go
-func UnusedFunctionForCI() {
-    fmt.Println("This function is never called")
-    x := 10
-    y := 20
-    _ = x + y
-}
-```
+**Why this fails:** the Dockerfile tries to copy a file that doesn't exist, so `docker build` errors out before the image is produced.
 
-**Expected:** `func UnusedFunctionForCI is unused (U1000)`
-**Fix:** Delete the function
+**File:** `Dockerfile`
 
+**Change:** change the source filename in the `COPY` instruction for the binary (or for the source — pick one).
 
----
-
-## Bug 5: Syntax Error (build fails)
-
-**File:** main.go
-**Add to END of main.go (safe - new unique name):**
-```go
-// Add to bottom of main.go
-func BrokenFunctionForCI() {
-    fmt.Println("missing closing brace")
-// Missing } here
-```
-
-**Expected:** `missing '{' or ')' at end of code block`
-**Fix:** Add the missing }
-
-
----
-
-## Bug 6: Wrong Go Version
-
-**File:** .github/workflows/00-complete-ci-cd.yml
-**Change:**
-```yaml
-go-version: '1.25'
-```
-**To:**
-```yaml
-go-version: '99.99'  # BAD: does not exist
-```
-
-**Expected:** `Unable to find Go version '99.99'`
-**Fix:** Change back to '1.25'
-
-
----
-
-## Bug 7: Docker Image Wrong
-
-**File:** Dockerfile
-**Change:**
 ```dockerfile
-FROM golang:1.25-alpine
-```
-**To:**
-```dockerfile
-FROM golang:nonexistent-version
+# Before (line 75):
+COPY --from=builder /app/myapp .
+
+# After:
+COPY --from=builder /app/myappp .    # ← file does not exist
 ```
 
-**Expected:** `failed to solve: golang:nonexistent-version`
-**Fix:** Change back to `FROM golang:1.25-alpine`
+**Expected error in pipeline:**
 
+```
+ERROR: failed to solve: failed to compute cache key:
+failed to calculate checksum of ref ...: "/app/myappp": not found
+```
+
+> ℹ️ Note: this pipeline uses Docker Buildx, so the error will mention `failed to solve` — not the older `open /var/lib/docker/tmp` style error.
+
+> 🔁 **Bonus Docker failure:** in the same Dockerfile, change the Go version in the `FROM` line to one that doesn't exist, e.g. `FROM golang:9.99-alpine AS builder`. This will fail at the very first `FROM` step.
 
 ---
 
-## Bug 8: Missing Secret
+## 🚀 Stage 5 — Deploy fails (`05-deploy.yml` / Deploy job in `00-complete-ci-cd.yml`)
 
-**File:** GitHub Settings → Secrets and variables → Actions
-**Action:** Delete the DOCKER_USERNAME secret
+**Why this fails:** the container starts, but the health check pings the wrong port and gets nothing back.
 
-**Expected:** `Username and password required`
-**Fix:** Re-add the secret in GitHub Settings
+**File:** the deploy script inside `.github/workflows/05-deploy.yml` (or the `deploy` job in `00-complete-ci-cd.yml`).
 
-
----
-
-## 🧪 Safe Reproduction Script
-
-### What is `.bak`?
-When you run the script, it creates backup files (`.bak`) of your original code:
-- `main.go.bak` = copy of your original `main.go`
-- `main_test.go.bak` = copy of your original `main_test.go`
-
-These let you restore the original code after testing the bugs.
-
-### Run the Script
+**Change:** in the `docker run` command, change the container port from `8080` to `9090`, but keep the health check hitting `8080`.
 
 ```bash
-#!/bin/bash
-# apply-bugs.sh - Apply bugs with LINE-LEVEL changes
+# Before (in the SSH deploy script):
+docker run -d \
+  --name ${{ env.IMAGE_NAME }} \
+  -p 8080:8080 \
+  --restart unless-stopped \
+  ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
 
-set -e
-
-echo "Backing up..."
-cp main.go main.go.bak
-cp main_test.go main_test.go.bak
-
-echo "Bug 1: Bad formatting..."
-sed -i "" 's|// Initialize Gin router|       // Initialize Gin router|' main.go
-
-echo "Bug 2: Printf wrong format..."
-sed -i '' 's/%v\\n/%d\\n/' main.go
-
-echo "Bug 3: Wrong expected name..."
-sed -i "" 's|!= "Alice"|!= "Bob"|' main_test.go
-
-echo "Bug 4: Unused function (append)..."
-cat >> main.go << 'EOF'
-func UnusedFunctionForCI() {
-    fmt.Println("This function is never called")
-}
-EOF
-
-echo "Bug 5: Syntax error (append)..."
-cat >> main.go << 'EOF'
-func BrokenFunctionForCI() {
-    fmt.Println("missing closing brace")
-# Missing }
-EOF
-
-echo "Done! Push to see failures:"
-echo "git add . && git commit -m 'Apply bugs' && git push"
+# After:
+docker run -d \
+  --name ${{ env.IMAGE_NAME }} \
+  -p 8080:9090 \          # ← host:container — app is on 9090, health check hits 8080
+  --restart unless-stopped \
+  ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
 ```
 
-**Restore:**
+**Expected error in pipeline:**
+
+```
+❌ Application health check failed!
+📋 Container logs:
+curl: (7) Failed to connect to localhost port 8080 after 5 ms: Connection refused
+```
+
+---
+
+## 🛠️ Bonus — Workflow syntax fails (any `.yml` in `.github/workflows/`)
+
+**Why this fails:** a YAML indentation/typo makes GitHub Actions unable to parse the workflow at all.
+
+**File:** any workflow file, e.g. `.github/workflows/01-basic-build.yml`
+
+**Change:** remove the space before `- name:` in any step.
+
+```yaml
+    steps:
+      - name: Get source code
+      - name: Set up Go         # ← delete the leading two spaces on this line
+        uses: actions/setup-go@v5
+```
+
+**Expected error:**
+
+```
+Invalid workflow file: .github/workflows/01-basic-build.yml
+Line: 44  Column: 7
+Error: (Line: 44, Col: 7): Sequence entries are not allowed here
+```
+
+---
+
+## ✅ Reset checklist
+
+After each experiment, undo the change:
+
 ```bash
-cp main.go.bak main.go && cp main_test.go.bak main_test.go
+git diff                 # see what you changed
+git checkout -- <file>   # revert one file
+# or
+git restore <file>
 ```
 
+Then move on to the next stage.
 
----
-
-## What Fails in Pipeline
-
-| Bugs Present | Pipeline Stops At |
-|--------------|-------------------|
-| Bug 5 (syntax) | Step 4: Build |
-| Bug 5 fixed, Bug 3 | Step 5: Tests |
-| Bugs 3,5 fixed, Bug 1 | Step 6: gofmt |
-| Bugs 1,3,5 fixed, Bug 2 | Step 7: go vet |
-| Bugs 1,2,3,5 fixed, Bug 4 | Step 8: staticcheck |
-
----
-
-## Try One Bug at a Time
-
-Best learning: apply one, fix it, push, watch it pass, then try the next.
-
-**Remember:** Each bug should produce its specific error - not "redeclared" errors! 🎓
+Happy breaking! 💥
