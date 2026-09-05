@@ -113,12 +113,6 @@ func getUserByID(c *gin.Context) {
 		return
 	}
 
-	// Unreachable code - this will never execute
-	if id == 0 {
-		fmt.Println("This will never print")
-		return
-	}
-
 	// Format string mismatch bug - go vet will catch this
 	fmt.Printf("User: %v\n", user) // Fixed: changed %d to %v
 
